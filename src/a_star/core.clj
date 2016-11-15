@@ -42,17 +42,18 @@
   )
 
 
-;; Dumps the map with the path highlighted
+;; Dumps the map with the path highlighted with stars
 (defn dump-path [path]
+  ;; Replace map entries with stars with they coincide with the path
   (let [annotated        (for [y (range HEIGHT) x (range WIDTH)]
                            (if (some #(= % [x y]) (:locs  path)) \* (map-at x y))
                            )]
+    ;; print each entry in the map
     (doseq [y (range HEIGHT)]
       (doseq [x (range WIDTH)]
         (print (nth annotated (+ x (* y WIDTH))) " ")
         )
       (println)
-
       )))
 
 
@@ -60,9 +61,7 @@
 (defn get-neighbors [loc] 
   (if (nil? loc)
     []
-    (let [
-          x (first loc)
-          y (second loc)
+    (let [[x y] loc
           n [x (dec y)]
           s [x (inc y)]
           e [(inc x) y]
@@ -73,22 +72,20 @@
   )
 
 
-;; Our heuristic cost function from the given locatin to the GOAL.
-(defn heuristic [loc]
-  (manhattan loc GOAL)
-  )
+;; Our heuristic cost function from the given location to the GOAL.
+(defn heuristic [loc]  (manhattan loc GOAL)  )
 
 
 ;; Given a path, tries all the neighbors and returns their new paths with adjusted costs.
 ;; Excludes nodes that have been visited already.
-(defn find-next-paths [path visited-nodes]
+(defn find-next-paths [path visited-nodes-set]
   (let [
-        current-point (:current-point path)
-        previous-points (:locs path)
-        neighbors (get-neighbors current-point)
-        current-cost (:incremental-cost path)
-        incremental-cost (inc current-cost)
-        filtered-neighbors (filter #(not (get visited-nodes %)) neighbors)
+        current-point              (:current-point path)
+        previous-points            (:locs path)
+        neighbors                  (get-neighbors current-point)
+        current-cost               (:incremental-cost path)
+        incremental-cost           (inc current-cost)
+        filtered-neighbors         (filter #(not (get visited-nodes-set %)) neighbors)
         ]
     (map
      (fn[loc]
@@ -99,8 +96,7 @@
 
 ;; Applies the A* algorithm to the given sorted queue of paths.
 ;; Assume the lowest cost path is always at the front of the queue.
-(defn find-path [queue visited-nodes]
-  (println "find-path: size=" (count queue))
+(defn find-path [queue visited-nodes-set]
   (let [path-under-test (first queue) ]
     (cond
       ;; no path?
@@ -111,33 +107,31 @@
 
       ;; Try the first entry in our queue...
       :default          (let [
-                              new-paths (find-next-paths path-under-test visited-nodes)
-                              new-locs (map :current-point new-paths)
-                              updated-queue  (sort-by :estimated-cost (concat new-paths (rest queue)))
-                              updated-visited (into visited-nodes new-locs)
-                              size (count queue)
+                              new-paths         (find-next-paths path-under-test visited-nodes-set)
+                              new-locs          (map :current-point new-paths)
+                              updated-queue     (sort-by :estimated-cost (concat new-paths (rest queue)))
+                              updated-visited   (into visited-nodes-set new-locs)
+                              size              (count queue)
                               ]
                           
                           (println "find-path: size=" size " newpaths=" (count new-paths) " queue=" queue )
                           (dump-path path-under-test)
+                          ;; Recurse!
                           (recur updated-queue updated-visited)
                           ))))
 
 
-;; Runs the A* algorithm for our MAP, and plots the result
+;; Runs the A* algorithm for our MAP, from START to GOAL, and plots the result
 (defn -main []
   (let [
         
-        initial-path (Path.  [START] 0 (heuristic START) START)
-        initial-queue [initial-path]
-        visited-nodes #{START}
-        best-path (find-path initial-queue visited-nodes)]
+        initial-path   (Path.  [START] 0 (heuristic START) START)
+        initial-queue  [initial-path]
+        visited-nodes-set  #{START}
+        best-path      (find-path initial-queue visited-nodes-set)]
 
     (if (nil? best-path)
-      (println "no path found")
-      (dump-path best-path))
+      (println "\nNo path found")
+      (doall (println "\nFINAL PATH:") (dump-path best-path)))
     )
   )
-
-
-
