@@ -125,7 +125,7 @@
 
 
 ;; Runs the A* algorithm for our MAP, and plots the result
-(defn run []
+(defn -main []
   (let [
         
         initial-path (Path.  [START] 0 (heuristic START) START)
